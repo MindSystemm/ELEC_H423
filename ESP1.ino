@@ -9,22 +9,20 @@ PubSubClient client(espClient);
 #define BUTTON_PIN  27
 #define LED_PIN 32
 
-const char *ssid = "Willwolf";
-const char *password = "12345678";
-const char *mqtt_server = "192.168.113.107";
-const int mqtt_port = 1883; //Default port of Mosquitto 
+//Network credentials
+const char *ssid = "MyWIFI";
+const char *password = "EasyPasa"; 
+
+//MQTT credentials
+const char *mqtt_server = "192.168.88.88"; //Own IP address
+const int mqtt_port = 12000; //Default port of Mosquitto 
 const char *clientID = "ESP32_1";
 
+//Topic structure to publich to MQTT broker
+const char *temperature_topic = "sens ors/esp32_1/temperature";
+const char *humidity_topic = "sensors/esp32_1/humidity";
 
-void setup() {
-  pinMode(LED_PIN, OUTPUT);
-  pinMode(BUTTON_PIN, INPUT);
-
-  digitalWrite(LED_PIN, LOW);
-  
-  dht.begin();
-  delay(2000);
-  Serial.begin(9600); //baud
+void setup_wifi(){
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
@@ -32,7 +30,9 @@ void setup() {
   }
   Serial.println("Connected to WiFi");
   Serial.println(WiFi.localIP());
+}
 
+void setup_server(){
   client.setServer(mqtt_server, mqtt_port);
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
@@ -47,6 +47,22 @@ void setup() {
   }
 }
 
+
+void setup() {
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT);
+  digitalWrite(LED_PIN, LOW);
+  
+  dht.begin();
+  delay(2000);
+  Serial.begin(115200); //baud
+
+  setup_wifi();
+  setup_server()
+}
+
+void 
+
 void loop() {
   if (digitalRead(BUTTON_PIN) == HIGH) {
     digitalWrite(LED_PIN, HIGH);
@@ -54,15 +70,18 @@ void loop() {
   } else {
     digitalWrite(LED_PIN, LOW);
   }
+  if (Wifi.status() != WL_CONNECTED){
+    delay(1000);
+    setup_wifi();
+  }
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop(); //Maintenance for MQTT connection.
   float temp = dht.readTemperature();
   float humidity = dht.readHumidity();
-  Serial.print("Temp : ");
-  Serial.print(temp);
-  Serial.println(" °C");
-  Serial.print("Humidity : ");
-  Serial.print(humidity);
-  Serial.println(" %");
-  client.publish("humidityData", String(humidity).c_str());
-  client.publish("temperatureData", String(temp).c_str());
-  delay(2000);
+
+  client.publish(temperature_topic, String(temperature).c_str());
+  client.publish(humidity_topic, String(humidity).c_str());
+  delay(5000);
 }
