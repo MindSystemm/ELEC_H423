@@ -65,9 +65,10 @@ def handle_data_msg(type_str, payload):
         payload = json.loads(payload.decode("UTF-8"))
     except:
         print(f"Invalid message received: {str(payload)}")
+        return
 
     if (type_str not in data): data[type_str] = {}
-        
+    
     client_id = payload['id']
     value     = float(payload['val'])
 
