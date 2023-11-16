@@ -26,7 +26,15 @@ When executed, it will behave like a sensor.
 - DHT sensor library
 - PubSubClient
 
-- Adafruit Unified Sensor
+# Secret values
+The file ```Config.h``` contains secret values hand has been ignored after committing initial values with:
+```bash
+git update-index --skip-worktree ESP/Config.h
+```
+It can be re-added to the worktree using:
+```bash
+git update-index --no-skip-worktree ESP/Config.h
+```
 
 # TODO
 [] Encryption:
