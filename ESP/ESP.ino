@@ -136,7 +136,6 @@ void setup() {
   pinMode(BUTTON_PIN, INPUT);
   
   dht.begin();
-  delay(2000);
   Serial.begin(115200);
 
   setup_wifi();
