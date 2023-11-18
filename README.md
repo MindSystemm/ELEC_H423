@@ -42,5 +42,3 @@ git update-index --no-skip-worktree ESP/Config.h
 - ASCON
 - RSA
 - DH with AES
-
-[] Creative feature
