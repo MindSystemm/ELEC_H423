@@ -7,10 +7,14 @@
 DHT dht(26, DHT11);
 
 #define BUTTON_PIN  27
-#define LED_PIN 32
+#define LED_PIN_RED 32
+#define LED_PIN_WHITE 33
+#define BTN_TRIGGER_TIME 3000 // 3 seconds
 
 WiFiClient espClient;
 PubSubClient client(espClient);
+
+bool paused = false;
 
 void setup_wifi(){
   WiFi.begin(SSID_ESP, PASSWD_ESP);
@@ -22,8 +26,28 @@ void setup_wifi(){
   Serial.println(WiFi.localIP());
 }
 
-void display_message(char *message) {
-  Serial.printf("Display: \"%s\"\n", message);
+void handle_pause(byte* payload) {
+  // Set global var to true if payload is not zero
+  paused = payload[0] != 0;
+  print_pause_state();
+}
+
+void print_pause_state() {
+  if (paused) {
+    Serial.println("Paused");
+  } else {
+    Serial.println("Resumed");
+  }
+}
+
+void pause_all() {
+  uint8_t data[] = {1};
+  client.publish("pause", data, 1);
+}
+
+void resume_all() {
+  uint8_t data[] = {0};
+  client.publish("pause", data, 1);
 }
 
 void callback(char *topic, byte *payload, unsigned int length) {
@@ -33,11 +57,15 @@ void callback(char *topic, byte *payload, unsigned int length) {
 
   Serial.println("-----------------------");
   Serial.printf("Message arrived in topic: %s\n", topic);
-  Serial.printf("Message: %s\n", payload_str);
+  Serial.printf("Message: %s (", payload_str);
+  for (unsigned int i = 0; i < length; i++) {
+    Serial.printf(" 0x%02x", payload[i]);
+  }
+  Serial.printf(" )\n");
   Serial.println("-----------------------");
 
-  if (strcmp(topic, "display") == 0) {
-    display_message(payload_str);
+  if (strcmp(topic, "pause") == 0 and length > 0) {
+    handle_pause(payload);
   }
 }
 
@@ -74,10 +102,38 @@ void publish(char* topic, float val) {
   client.publish(topic, stringified_data_arr);
 }
 
+int btn_begin = 0;
+int btn_press_time = 0;
+int btn_pressed = false;
+bool update_btn() {
+  if (digitalRead(BUTTON_PIN) == HIGH) {
+    if (!btn_pressed) {
+      btn_begin = millis();
+      btn_pressed = true;
+    }
+    btn_press_time = millis() - btn_begin;
+
+    return true;
+  } else if (btn_pressed) {
+    // Just released => still keep time
+    btn_press_time = millis() - btn_begin;
+    btn_begin = 0;
+    btn_pressed = false;
+    return false;
+  } else {
+    // Released => reset
+    btn_press_time = 0;
+    return false;
+  }
+}
+
 void setup() {
-  pinMode(LED_PIN, OUTPUT);
+  pinMode(LED_PIN_RED, OUTPUT);
+  pinMode(LED_PIN_WHITE, OUTPUT);
+  digitalWrite(LED_PIN_RED, LOW);
+  digitalWrite(LED_PIN_WHITE, LOW);
+
   pinMode(BUTTON_PIN, INPUT);
-  digitalWrite(LED_PIN, LOW);
   
   dht.begin();
   delay(2000);
@@ -86,17 +142,46 @@ void setup() {
   setup_wifi();
   setup_broker();
 
-  client.subscribe("display");
+  client.subscribe("pause");
 }
 
 int last_update = millis();
-
+bool triggered_paused_update = false; // Used to detect button release between pause state updates
 void loop() {
-  if (digitalRead(BUTTON_PIN) == HIGH) {
-    digitalWrite(LED_PIN, HIGH);
-    Serial.println("LED is ON");
+  bool btn_active = update_btn();
+
+  if (btn_active) {
+    digitalWrite(LED_PIN_RED, HIGH);
+
+    if (btn_press_time >= BTN_TRIGGER_TIME && !triggered_paused_update) {
+      // Button has been pushed for at least 3 seconds
+      triggered_paused_update = true;
+
+      if (paused) {
+        resume_all();
+      } else {
+        pause_all();
+      }   
+    }
   } else {
-    digitalWrite(LED_PIN, LOW);
+    // Btn released 
+    digitalWrite(LED_PIN_RED, LOW);
+
+    // So we have to release the button before a new pause state update can be triggered
+    triggered_paused_update = false;
+
+    if (btn_press_time > 0 && btn_press_time < BTN_TRIGGER_TIME) {
+      // Button was pressed shortly
+      // => Cycle paused state
+      paused = !paused;
+      print_pause_state();
+    }
+  }
+
+  if (paused) {
+    digitalWrite(LED_PIN_WHITE, HIGH);
+  } else {
+    digitalWrite(LED_PIN_WHITE, LOW);
   }
 
   if (millis() - last_update >= 1000) {
@@ -111,12 +196,15 @@ void loop() {
       setup_broker();
     }
 
-    float temp = dht.readTemperature();
-    float humidity = dht.readHumidity();
+    if (!paused) {
+      float temp = dht.readTemperature();
+      float humidity = dht.readHumidity();
 
-    publish("temperature", temp);
-    publish("humidity", humidity);
-    Serial.println("Sent data successfully");
+      publish("temperature", temp);
+      publish("humidity", humidity);
+
+      digitalWrite(LED_PIN_WHITE, HIGH);
+    }
 
     client.loop();
 
