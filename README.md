@@ -23,8 +23,12 @@ When executed, it will behave like a sensor.
 - esp32
 
 # Installed libraries
+## IDE
 - DHT sensor library
 - PubSubClient
+## Manual
+- Crypto (to use this with and ESP32 rename ```crypto.h``` in ```%appdata%/../local/Arduino15/packages/esp32/hardware/esp32/2.0.11/tools/sdk/esp32/include/bt/esp_ble_mesh/mesh_core```)
+- CryptoLW
 
 # Secret values
 The file ```Config.h``` contains secret values hand has been ignored after committing initial values with:
