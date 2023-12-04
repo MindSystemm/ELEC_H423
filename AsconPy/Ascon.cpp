@@ -136,7 +136,7 @@ void fill_iv(uint8_t* iv, size_t l) {
 }
 
 // Encrypt and authenticate the plaintext + authenticate the authdata
-CryptoData* encrypt_auth(uint8_t key[KEY_LENGTH], uint8_t* plaintext, uint8_t plaintext_l, uint8_t* authdata, uint8_t authdata_l) {
+CryptoData* encrypt_auth(uint8_t key[KEY_LENGTH], uint8_t* plaintext, size_t plaintext_l, uint8_t* authdata, size_t authdata_l) {
     CryptoData* cryptoData = (CryptoData*) malloc(sizeof(CryptoData));
 
     // Add nonce
@@ -176,7 +176,7 @@ CryptoData* encrypt_auth(uint8_t key[KEY_LENGTH], uint8_t* plaintext, uint8_t pl
 }
 
 // Decrypt and check authentication of the plaintext + check authentication of the authdata
-Plaintext* decrypt_auth(uint8_t key[KEY_LENGTH], CryptoData* cryptoData, uint8_t* authdata, uint8_t authdata_l) {
+Plaintext* decrypt_auth(uint8_t key[KEY_LENGTH], CryptoData* cryptoData, uint8_t* authdata, size_t authdata_l) {
     Plaintext* plaintext = (Plaintext*) malloc(sizeof(Plaintext));
     plaintext->plaintext_l = cryptoData->header.cipher_l - 8; // The output buffer must have at least as many bytes as the input buffer. - 8 because the nonce at the end will be removed
     plaintext->plaintext = (uint8_t*) malloc(plaintext->plaintext_l);
