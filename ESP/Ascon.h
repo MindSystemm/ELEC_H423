@@ -21,7 +21,7 @@
 #define NONCE_ADDR 0
 #define NONCE_MARGIN 10
 
-#define UINT64_MAX 0xFFFFFFFFFFFFFFFF
+#define UINT64_MAX 0xFFFFFFFFFFFFFFFFULL
 
 typedef struct {
   uint8_t iv[16];      // Initialization vector

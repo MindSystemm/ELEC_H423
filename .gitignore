@@ -1,1 +1,7 @@
 .vscode
+cyascon
+ascon test.txt
+CMakeFiles
+CMakeCache.txt
+AsconPy/Ascon.exe
+AsconPy/Ascon
