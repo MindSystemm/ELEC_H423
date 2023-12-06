@@ -1,1 +1,1 @@
-gcc *.cpp ./Crypto/*.cpp -I ./Crypto -o Ascon -lstdc++
+gcc *.cpp ./Crypto/*.cpp -I ./Crypto -o Ascon -lstdc++ -lsodium

@@ -9,6 +9,11 @@
 #include "./Crypto/CryptoLW.h"
 #include "./Crypto/Ascon128.h"
 
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
+
+namespace py = pybind11;
+
 #define KEY_LENGTH 16
 #define IV_LENGTH 16
 #define TAG_LENGTH 16

@@ -4,45 +4,45 @@
 #include "Ascon.h"
 #include <tuple>
 
-typedef struct {
-    uint8_t* data;
-    size_t length;
-} Byte_Array;
+uint8_t* py_arr_to_uint8_t(py::array_t<uint8_t> arr);
+py::array_t<uint8_t> uint8_t_arr_to_py(uint8_t* arr, size_t l);
 
-void free_byte_array(Byte_Array* b);
-
-void print_byte_array(Byte_Array* b);
+class ByteArray {
+    public:
+        uint8_t* data = nullptr;
+        size_t length = 0;
+};
 
 class Ascon {
     uint8_t key[KEY_LENGTH];
 
     private:
-        Byte_Array* cryptodata_to_byte_arr(CryptoData* d) {
+        ByteArray cryptodata_to_byte_arr(CryptoData* d) {
             size_t return_size = this->get_needed_size(d->header.cipher_l);
             size_t cryptodata_header_size = return_size - d->header.cipher_l;
 
-            Byte_Array* byte_array = (Byte_Array*) malloc(sizeof(Byte_Array));
+            ByteArray byte_array;
 
-            byte_array->length = return_size;
-            byte_array->data = (uint8_t*) malloc(byte_array->length);
+            byte_array.length = return_size;
+            byte_array.data = (uint8_t*) malloc(byte_array.length);
 
             // Copy cryptodata without cipher pointer and cipher data
-            memcpy(byte_array->data, d, cryptodata_header_size);
+            memcpy(byte_array.data, d, cryptodata_header_size);
 
             // append cipher data
-            memcpy(byte_array->data + cryptodata_header_size, d->cipher, return_size - cryptodata_header_size);
+            memcpy(byte_array.data + cryptodata_header_size, d->cipher, return_size - cryptodata_header_size);
 
             return byte_array;
         }
 
-        Byte_Array* plaintext_to_byte_arr(Plaintext* p) {
-            Byte_Array* byte_array = (Byte_Array*) malloc(sizeof(Byte_Array));
+        ByteArray plaintext_to_byte_arr(Plaintext* p) {
+            ByteArray byte_array;
 
-            byte_array->length = p->plaintext_l;
-            byte_array->data = (uint8_t*) malloc(byte_array->length);
+            byte_array.length = p->plaintext_l;
+            byte_array.data = (uint8_t*) malloc(byte_array.length);
 
             // Copy plaintext array
-            memcpy(byte_array->data, p->plaintext, p->plaintext_l);
+            memcpy(byte_array.data, p->plaintext, p->plaintext_l);
 
             return byte_array;
         }
@@ -68,36 +68,52 @@ class Ascon {
         }
     
     public:
-        Ascon(uint8_t key[KEY_LENGTH]) {
+        Ascon(py::array_t<uint8_t> arr) {
+            uint8_t* key = py_arr_to_uint8_t(arr);
             init_nonce();
             memcpy(this->key, key, KEY_LENGTH);
+
+            // Print key (for debugging)
+            char* key_str = byte_arr_to_str(this->key, KEY_LENGTH);
+            printf("Saved key: %s\n", key_str);
+            free(key_str);
         }
 
-        Byte_Array* encrypt(uint8_t* plaintext, size_t plaintext_l, uint8_t* authdata, size_t authdata_l) {
+        py::array_t<uint8_t> encrypt(py::array_t<uint8_t> plaintext_py, size_t plaintext_l, py::array_t<uint8_t> authdata_py, size_t authdata_l) {
+            uint8_t* plaintext = py_arr_to_uint8_t(plaintext_py);
+            uint8_t* authdata = py_arr_to_uint8_t(authdata_py);
+
             CryptoData* cryptodata = encrypt_auth(this->key, plaintext, plaintext_l, authdata, authdata_l);
 
             if (cryptodata == nullptr) {
-                return nullptr;
+                py::array_t<uint8_t> null_arr = py::array_t<uint8_t>({0});
+                return null_arr;
             }
 
-            Byte_Array* byte_array = this->cryptodata_to_byte_arr(cryptodata);
+            ByteArray byte_array_tmp = this->cryptodata_to_byte_arr(cryptodata);
+
+            py::array_t<uint8_t> byte_array = uint8_t_arr_to_py(byte_array_tmp.data, byte_array_tmp.length);
 
             free_crypto(cryptodata);
 
             return byte_array;
         }
 
-        Byte_Array* decrypt(uint8_t* cipher_data, size_t cipher_data_l, uint8_t* authdata, size_t authdata_l) {
+        py::array_t<uint8_t> decrypt(py::array_t<uint8_t> cipher_data_py, size_t cipher_data_l, py::array_t<uint8_t> authdata_py, size_t authdata_l) {
+            uint8_t* cipher_data = py_arr_to_uint8_t(cipher_data_py);
+            uint8_t* authdata = py_arr_to_uint8_t(authdata_py);
+
             CryptoData* cryptodata = this->cryptodata_from_byte_arr(cipher_data, cipher_data_l);
             
             Plaintext* plaintext = decrypt_auth(this->key, cryptodata, authdata, authdata_l);
 
             if (plaintext == nullptr) {
                 free_crypto(cryptodata);
-                return nullptr;
+                py::array_t<uint8_t> null_arr = py::array_t<uint8_t>({0});
+                return null_arr;
             }
 
-            Byte_Array* byte_array = this->plaintext_to_byte_arr(plaintext);
+            py::array_t<uint8_t> byte_array = uint8_t_arr_to_py(plaintext->plaintext, plaintext->plaintext_l);
 
             free_crypto(cryptodata);
             free_plaintext(plaintext);

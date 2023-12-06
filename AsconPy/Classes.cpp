@@ -1,16 +1,17 @@
 #include "Classes.h"
 
-void free_byte_array(Byte_Array* b) {
-    free(b->data);
-    free(b);
+uint8_t* py_arr_to_uint8_t(py::array_t<uint8_t> arr) {
+    py::buffer_info info = arr.request();
+    uint8_t* ptr = static_cast<uint8_t *>(info.ptr);
+    return ptr;
 }
 
-void print_byte_array(Byte_Array* b) {
-    printf("Byte_Array:\n");
+py::array_t<uint8_t> uint8_t_arr_to_py(uint8_t* arr, size_t l) {
+    py::array_t<uint8_t> result = py::array_t<uint8_t>({l});
+    py::buffer_info res_buf = result.request();
+    uint8_t* ptr_res = static_cast<uint8_t *>(res_buf.ptr);
 
-    // Print data
-    char* arr = byte_arr_to_str(b->data, b->length);
-    printf("\tdata: %s\n", arr);
-    printf("\tlength: %d\n", b->length);
-    free(arr);
+    memcpy(ptr_res, arr, l);
+
+    return result;
 }

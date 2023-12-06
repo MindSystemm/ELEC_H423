@@ -17,13 +17,7 @@ To start the sensors, change the necesarry parameters such as ids and keys of ``
 
 ### Dummy
 To test the client and MQTT broker a dummy sensor script is included: ```dummy.py```.
-When executed, it will behave like a sensor.
-
-# Install ascon module for python
-1) In admin mode: ```pip install setuptools cython```
-2) clone ```https://github.com/xHappenZ/cyascon```
-3) ```cd cyascon/asconAead```
-4) ```python setupAead.py build_ext --inplace```
+When executed, it will behave like a sensor.`
 
 # Installed boards
 - esp32

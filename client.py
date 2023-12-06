@@ -1,10 +1,10 @@
 import json
 import numpy as np
 from datetime import datetime
-import paho.mqtt.client as mqtt
+import paho.mqtt.client as mqtt             # pip install paho-mqtt
 
 # Live charts
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt             # pip install matplotlib OR pacman -S  pacman -S mingw-w64-ucrt-x86_64-python-matplotlib
 import matplotlib.animation as animation
 
 ######################

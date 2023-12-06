@@ -39,23 +39,20 @@ int main(int argc, char* argv[]) {
 
     char plaintext_str[] = "This should be encrypted!";
     char authdata_str[] = "This should be authenticated!";
-    Byte_Array* cipher = ascon.encrypt((uint8_t*) plaintext_str, sizeof(plaintext_str), (uint8_t*) authdata_str, sizeof(authdata_str));
+    ByteArray cipher = ascon.encrypt((uint8_t*) plaintext_str, sizeof(plaintext_str), (uint8_t*) authdata_str, sizeof(authdata_str));
 
-    if (cipher == nullptr) {
+    if (cipher.length == 0) {
         printf("Cipher was null");
     } else {
         //print_byte_array(cipher);
     }
 
-    Byte_Array* plaintext = ascon.decrypt(cipher->data, cipher->length, (uint8_t*) authdata_str, sizeof(authdata_str));
+    ByteArray plaintext = ascon.decrypt(cipher.data, cipher.length, (uint8_t*) authdata_str, sizeof(authdata_str));
 
-    if (plaintext == nullptr) {
+    if (plaintext.length == 0) {
         printf("Plaintext was null");
     } else {
         //print_byte_array(plaintext);
-        printf("Plaintext: %s\n", (char*) plaintext->data);
-        free_byte_array(plaintext);
+        printf("Plaintext: %s\n", (char*) plaintext.data);
     }
-
-    free_byte_array(cipher);
 }
