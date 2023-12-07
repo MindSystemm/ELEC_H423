@@ -2,7 +2,9 @@
 #include <DHT.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
-#include "Ascon.h"
+#include "Classes.h"
+#include "Tests.h"
+#include <cstring>
 
 DHT dht(26, DHT11);
 
@@ -13,167 +15,10 @@ DHT dht(26, DHT11);
 
 WiFiClient espClient;
 PubSubClient client(espClient);
+uint8_t key[KEY_LENGTH] = CRYPTO_KEY;
+Ascon crypto(key);
 
 bool paused = false;
-
-
-// A debug function
-void test() {
-
-  char plaintext_str[] = "This should be encrypted!";
-  char authdata_str[] = "This should be authenticated!";
-
-  // #########################
-  // ###### Should work ######
-  // #########################
-  Serial.println("====== Example that should work ======");
-  CryptoData* cryptodata = encrypt_auth((uint8_t*) plaintext_str, sizeof(plaintext_str), (uint8_t*) authdata_str, sizeof(authdata_str));
-
-  if (cryptodata == nullptr) {
-    Serial.println("cryptodata was null");
-    return;
-  }
-
-  print_ascon(cryptodata);
-  Plaintext* plaintext = decrypt_auth(cryptodata, (uint8_t*) authdata_str, sizeof(authdata_str));
-  
-  if (plaintext == nullptr) {
-    Serial.println("plaintext was null");
-    free_crypto(cryptodata);
-    return;
-  }
-
-  print_ascon(plaintext);
-
-  char plaintext_recovered[plaintext->plaintext_l + 1];
-  strncpy(plaintext_recovered, (char*) plaintext->plaintext, plaintext->plaintext_l);
-  Serial.printf("plaintext: %s\n", plaintext_recovered);
-
-  // Don't free cryptodata => used by next test
-  free_plaintext(plaintext);
-
-  Serial.println();
-
-  // #####################################
-  // ###### Shouldn't work (replay) ######
-  // #####################################
-  Serial.printf("====== Example that shouldn't work (replay: margin = %d) ======\n", NONCE_MARGIN);
-
-  CryptoData* cryptodata_old = encrypt_auth((uint8_t*) plaintext_str, sizeof(plaintext_str), (uint8_t*) authdata_str, sizeof(authdata_str));
-  if (cryptodata_old == nullptr) {
-      Serial.println("cryptodata_old was null");
-  }
-  print_ascon(cryptodata_old);
-
-  for (size_t i = 0; i < NONCE_MARGIN + 1; i++) {
-    // Encrypting increases nonce
-    cryptodata = encrypt_auth((uint8_t*) plaintext_str, sizeof(plaintext_str), (uint8_t*) authdata_str, sizeof(authdata_str));
-
-    // Decrypting checks nonce
-    plaintext = decrypt_auth(cryptodata_old, (uint8_t*) authdata_str, sizeof(authdata_str));
-
-    if (i < NONCE_MARGIN) {
-      // Should not be null
-      if (plaintext == nullptr) {
-        Serial.println("plaintext was null (before margin exit)");
-      } else {
-        Serial.println("plaintext was not null");
-        free_plaintext(plaintext);
-      }
-
-      if (cryptodata == nullptr) {
-        Serial.println("cryptodata was null (before margin exit)");
-      } else {
-        free_crypto(cryptodata);
-      }
-    }
-  }
-  
-  if (plaintext == nullptr) {
-    Serial.println("plaintext was null");
-    free_crypto(cryptodata);
-    free_crypto(cryptodata_old);
-  } else {
-    print_ascon(plaintext);
-
-    char plaintext_recovered2[plaintext->plaintext_l + 1];
-    strncpy(plaintext_recovered2, (char*) plaintext->plaintext, plaintext->plaintext_l);
-    Serial.printf("plaintext: %s\n", plaintext_recovered2);
-
-    free_crypto(cryptodata);
-    free_crypto(cryptodata_old);
-    free_plaintext(plaintext);
-  }
-
-  Serial.println();
-
-  // ################################################
-  // ###### Shouldn't work (auth data altered) ######
-  // ################################################
-  Serial.println("====== Example that shouldn't work (authenticated data altered) ======");
-
-  char authdata_different_str[] = "This should not be authenticated!";
-
-  cryptodata = encrypt_auth((uint8_t*) plaintext_str, sizeof(plaintext_str), (uint8_t*) authdata_str, sizeof(authdata_str));
-  
-  if (cryptodata == nullptr) {
-    Serial.println("cryptodata was null");
-    return;
-  }
-  
-  print_ascon(cryptodata);
-
-  plaintext = decrypt_auth(cryptodata, (uint8_t*) authdata_different_str, sizeof(authdata_different_str));
-  
-  if (plaintext == nullptr) {
-    Serial.println("plaintext was null");
-    free_crypto(cryptodata);
-  } else {
-    print_ascon(plaintext);
-
-    char plaintext_recovered3[plaintext->plaintext_l + 1];
-    strncpy(plaintext_recovered3, (char*) plaintext->plaintext, plaintext->plaintext_l);
-    Serial.printf("plaintext: %s\n", plaintext_recovered3);
-
-    free_crypto(cryptodata);
-    free_plaintext(plaintext);
-  }
-
-  Serial.println();
-
-  // #############################################
-  // ###### Shouldn't work (cipher altered) ######
-  // #############################################
-  Serial.println("====== Example that shouldn't work (cipher altered) ======");
-
-  cryptodata = encrypt_auth((uint8_t*) plaintext_str, sizeof(plaintext_str), (uint8_t*) authdata_str, sizeof(authdata_str));
-  
-  if (cryptodata == nullptr) {
-    Serial.println("cryptodata was null");
-    return;
-  }
-  
-  print_ascon(cryptodata);
-
-  // Alter cipher
-  cryptodata->cipher[0]++;
-
-  plaintext = decrypt_auth(cryptodata, (uint8_t*) authdata_str, sizeof(authdata_str));
-  
-  if (plaintext == nullptr) {
-    Serial.println("plaintext was null");
-    free_crypto(cryptodata);
-  } else {
-    print_ascon(plaintext);
-
-    char plaintext_recovered4[plaintext->plaintext_l + 1];
-    strncpy(plaintext_recovered4, (char*) plaintext->plaintext, plaintext->plaintext_l);
-    Serial.printf("plaintext: %s\n", plaintext_recovered4);
-
-    free_crypto(cryptodata);
-    free_plaintext(plaintext);
-  }
-}
 
 void setup_wifi(){
   WiFi.begin(SSID_ESP, PASSWD_ESP);
@@ -183,6 +28,16 @@ void setup_wifi(){
   }
   Serial.println("Connected to WiFi");
   Serial.println(WiFi.localIP());
+}
+
+void publish_encrypted(char* topic, uint8_t* data, uint64_t length) {
+  // Encrypt
+  ByteArray byte_array = crypto.encrypt(data, length, (uint8_t*) topic, std::strlen(topic));
+
+  client.publish(topic, byte_array.data, byte_array.length);
+
+  // Cleanup
+  free(byte_array.data);
 }
 
 void handle_pause(byte* payload) {
@@ -201,31 +56,43 @@ void print_pause_state() {
 
 void pause_all() {
   uint8_t data[] = {1};
-  client.publish("pause", data, 1);
+  publish_encrypted("pause", data, 1);
 }
 
 void resume_all() {
   uint8_t data[] = {0};
-  client.publish("pause", data, 1);
+  publish_encrypted("pause", data, 1);
 }
 
-void callback(char *topic, byte *payload, unsigned int length) {
-  char payload_str[length+1];
-  memcpy(payload_str, payload, sizeof(payload_str));
-  payload_str[length] = '\0';
+void callback(char *topic, byte *payload_enc, unsigned int length) {
+  // Decrypt and verify
+  ByteArray byte_array = crypto.decrypt(payload_enc, length, (uint8_t*) topic, std::strlen(topic));
+
+  if (byte_array.data == nullptr || byte_array.length == 0) {
+    // Decryption unsuccessful (wrong key, message altered, replayed)
+     Serial.println("Message invalid (decryption failed)");
+    return;
+  }
+  
+  char payload_str[byte_array.length+1];
+  memcpy(payload_str, byte_array.data, sizeof(payload_str));
+  payload_str[byte_array.length] = '\0';
 
   Serial.println("-----------------------");
   Serial.printf("Message arrived in topic: %s\n", topic);
   Serial.printf("Message: %s (", payload_str);
-  for (unsigned int i = 0; i < length; i++) {
-    Serial.printf(" 0x%02x", payload[i]);
+  for (unsigned int i = 0; i < byte_array.length; i++) {
+    Serial.printf(" 0x%02x", byte_array.data[i]);
   }
   Serial.printf(" )\n");
   Serial.println("-----------------------");
 
-  if (strcmp(topic, "pause") == 0 and length > 0) {
-    handle_pause(payload);
+  if (strcmp(topic, "pause") == 0 and byte_array.length > 0) {
+    handle_pause(byte_array.data);
   }
+
+  // Cleanup
+  free(byte_array.data);
 }
 
 void setup_broker(){
@@ -258,7 +125,7 @@ void publish(char* topic, float val) {
   char stringified_data_arr[data_length];
   stringified_data.toCharArray(stringified_data_arr, data_length);
 
-  client.publish(topic, stringified_data_arr);
+  publish_encrypted(topic, (uint8_t*) stringified_data_arr, data_length);
 }
 
 int btn_begin = 0;
@@ -297,9 +164,7 @@ void setup() {
   dht.begin();
   Serial.begin(115200);
 
-  EEPROM.begin(8); // 8 bytes: 1 uint8_t
-
-  init_nonce();
+  EEPROM.begin(8); // 8 bytes: 1 uint64_t
 
   Serial.println("################# Test #################");
   test();

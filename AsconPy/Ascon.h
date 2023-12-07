@@ -24,7 +24,7 @@ namespace py = pybind11;
 typedef struct {
   uint8_t iv[IV_LENGTH];      // Initialization vector
   uint8_t tag[TAG_LENGTH];     // Authentication tag
-  size_t cipher_l;
+  uint64_t cipher_l;
 } CryptoHeader;
 
 typedef struct {
@@ -33,13 +33,13 @@ typedef struct {
 } CryptoData;
 
 typedef struct {
-    size_t plaintext_l;
+    uint64_t plaintext_l;
     uint8_t* plaintext;
 } Plaintext;
 
 void init_nonce();
 
-char* byte_arr_to_str(uint8_t* arr, size_t l);
+char* byte_arr_to_str(uint8_t* arr, uint64_t l);
 
 void free_crypto(CryptoData* d);
 void free_plaintext(Plaintext* p);
@@ -47,8 +47,8 @@ void free_plaintext(Plaintext* p);
 void print_ascon(CryptoData* d);
 void print_ascon(Plaintext* p);
 
-CryptoData* encrypt_auth(uint8_t key[KEY_LENGTH], uint8_t* plaintext, size_t plaintext_l, uint8_t* authdata, size_t authdata_l);
+CryptoData* encrypt_auth(uint8_t key[KEY_LENGTH], uint8_t* plaintext, uint64_t plaintext_l, uint8_t* authdata, uint64_t authdata_l);
 
-Plaintext* decrypt_auth(uint8_t key[KEY_LENGTH], CryptoData* cryptoData, uint8_t* authdata, size_t authdata_l);
+Plaintext* decrypt_auth(uint8_t key[KEY_LENGTH], CryptoData* cryptoData, uint8_t* authdata, uint64_t authdata_l);
 
 #endif
