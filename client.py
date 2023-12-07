@@ -73,10 +73,6 @@ def handle_data_msg(type_str, payload):
         # Decrypt
         payload = np.frombuffer(payload, dtype=np.uint8)
         type_arr = np.frombuffer(type_str.encode('ascii'), dtype=np.uint8)
-        print(type(type_arr))
-        print(type_arr)
-        print(payload)
-        print_byte_arr(payload)
         
         payload = ascon.decrypt(payload, type_arr)
         if (len(payload) == 0): 
@@ -87,8 +83,6 @@ def handle_data_msg(type_str, payload):
         # Remove last zero byte
         if (payload[-1] == 0): payload = payload[:-1]
         payload_str = payload.tobytes().decode("UTF-8")
-        print(payload)
-        print(payload_str)
         payload = json.loads(payload_str)
     except:
         print(f"Invalid message received: {str(payload)}")

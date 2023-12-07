@@ -144,10 +144,6 @@ uint64_t extract_nonce(uint8_t* arr, uint64_t l) {
 CryptoData* encrypt_auth(uint8_t key[KEY_LENGTH], uint8_t* plaintext, uint64_t plaintext_l, uint8_t* authdata, uint64_t authdata_l) {
     CryptoData* cryptoData = (CryptoData*) malloc(sizeof(CryptoData));
 
-    char* auth = byte_arr_to_str(authdata, authdata_l);
-    Serial.printf("Auth: %s\n", auth);
-    free(auth);
-
     // Add nonce
     plaintext_l += 8; // + 8 because nonce has to be added
     uint8_t* plaintext_bffr = (uint8_t*) malloc(plaintext_l);

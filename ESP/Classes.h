@@ -71,8 +71,6 @@ class Ascon {
         }
 
         ByteArray encrypt(uint8_t* plaintext, uint64_t plaintext_l, uint8_t* authdata, uint64_t authdata_l) {
-            Serial.printf("Size: %zu\n", this->get_needed_size(0));
-            Serial.printf("uint64_t: %zu\n", sizeof(uint64_t));
             CryptoData* cryptodata = encrypt_auth(this->key, plaintext, plaintext_l, authdata, authdata_l);
 
             if (cryptodata == nullptr) {

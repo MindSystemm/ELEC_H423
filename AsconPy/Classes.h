@@ -52,21 +52,13 @@ class Ascon {
             uint64_t cryptodata_header_size = this->get_needed_size(0);
             uint64_t cipher_size = l - cryptodata_header_size;
 
-            printf("l: %zu\n", l);
-            printf("cryptodata_header_size: %zu\n", cryptodata_header_size);
-            printf("cipher_size: %zu\n", cipher_size);
-
             CryptoData* cryptodata = (CryptoData*) malloc(sizeof(CryptoData));
-
-            printf("cipher_l: %zu\n", cryptodata->header.cipher_l);
 
             // Copy cryptodata without cipher pointer and cipher data
             memcpy(cryptodata, arr, cryptodata_header_size);
-            printf("cipher_l: %zu\n", cryptodata->header.cipher_l);
 
             // append cipher data
             cryptodata->cipher = (uint8_t*) malloc(cipher_size);
-            printf("cryptodata->cipher: %p\n", cryptodata->cipher);
             memcpy(cryptodata->cipher, arr + cryptodata_header_size, cipher_size);
 
             return cryptodata;
@@ -116,9 +108,6 @@ class Ascon {
         }
 
         py::array_t<uint8_t> decrypt(py::array_t<uint8_t> cipher_data_py, py::array_t<uint8_t> authdata_py) {
-            printf("Size: %zu\n", this->get_needed_size(0));
-            printf("uint64_t: %zu\n", sizeof(uint64_t));
-            printf("decrypt 1\n");
             uint64_t cipher_data_l = py_arr_size(cipher_data_py);
             uint64_t authdata_l = py_arr_size(authdata_py);
             if (cipher_data_l < sizeof(CryptoData) - sizeof(uint8_t*)) {
@@ -126,20 +115,18 @@ class Ascon {
                 py::array_t<uint8_t> null_arr = py::array_t<uint8_t>({0});
                 return null_arr;
             }
-            printf("decrypt 2\n");
             
             uint8_t* cipher_data = py_arr_to_uint8_t(cipher_data_py);
             uint8_t* authdata = py_arr_to_uint8_t(authdata_py);
-            printf("decrypt 3\n");
+
             CryptoData* cryptodata = this->cryptodata_from_byte_arr(cipher_data, cipher_data_l);
-            printf("decrypt 4\n");
 
             printf("------ Decryption ------\n");
             print_ascon(cryptodata);
             printf("------------------------\n");
 
             Plaintext* plaintext = decrypt_auth(this->key, cryptodata, authdata, authdata_l);
-            printf("decrypt 5\n");
+
             if (plaintext == nullptr) {
                 free_crypto(cryptodata);
                 free(cipher_data);
@@ -147,14 +134,14 @@ class Ascon {
                 py::array_t<uint8_t> null_arr = py::array_t<uint8_t>({0});
                 return null_arr;
             }
-            printf("decrypt 6\n");
+
             py::array_t<uint8_t> byte_array = uint8_t_arr_to_py(plaintext->plaintext, plaintext->plaintext_l);
-            printf("decrypt 7\n");
+
             free_crypto(cryptodata);
             free_plaintext(plaintext);
             free(cipher_data);
             free(authdata);
-            printf("decrypt 8\n");
+
             return byte_array;
         }
 };

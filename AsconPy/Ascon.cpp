@@ -7,6 +7,12 @@ uint64_t last_nonce;
 
 void init_nonce() {
   last_nonce = 0; // TODO: Read from file
+  FILE* in = fopen("ascon.bin","rb");
+  if (in != nullptr) {
+    // File exists
+    fread(&last_nonce, sizeof(uint64_t), 1, in);
+    fclose(in);
+  }
   if (last_nonce < NONCE_MARGIN || last_nonce == UINT64_MAX) {
     last_nonce = NONCE_MARGIN;
   }
@@ -18,6 +24,9 @@ void update_nonce(uint64_t nonce) {
   if (nonce > last_nonce) {
     last_nonce = nonce;
     // TODO: write nonce to file
+    FILE* out = fopen("ascon.bin","wb");
+    fwrite(&last_nonce, sizeof(uint64_t), 1, out);
+    fclose(out);
     printf("Nonce updated to: %llu\n", last_nonce);
   }
 }
@@ -40,16 +49,9 @@ char* byte_arr_to_str(uint8_t* arr, uint64_t l) {
     uint64_t total_str_length = 1 + ((l-1)*5) + 4 + 1 + 1; // '[' + array of '0xXX,' + last 0xXX + ']' + '\0'
     char* bffr = (char*) malloc(total_str_length);
     char* ptr = bffr;
-    printf("byte_arr_to_str 1\n");
-    printf("l: %zu\n", l);
-    printf("total_str_length: %zu\n", total_str_length);
-    printf("bffr: %p\n", bffr);
-    printf("ptr: %p\n", ptr);
 
     *ptr = '[';
     ptr++;
-
-    printf("byte_arr_to_str 1.1\n");
 
     // Add array data
     for (uint64_t i = 0; i < l; i++) {
@@ -62,13 +64,10 @@ char* byte_arr_to_str(uint8_t* arr, uint64_t l) {
             ptr += 5;
         }
     }
-    printf("byte_arr_to_str 2\n");
 
     *ptr = ']';
     ptr++;
     *ptr = '\0';
-
-    printf("byte_arr_to_str 3\n");
     
     return bffr;
 }
@@ -93,7 +92,6 @@ void print_ascon(CryptoData* d) {
     printf("\t\tcipher_l: %zu\n", d->header.cipher_l);
 
     // Print data
-    printf("p: %p\n", d->cipher);
     arr = byte_arr_to_str(d->cipher, d->header.cipher_l);
     printf("\tcipher: %s\n", arr);
     free(arr);
@@ -200,33 +198,28 @@ CryptoData* encrypt_auth(uint8_t key[KEY_LENGTH], uint8_t* plaintext, uint64_t p
 // Decrypt and check authentication of the plaintext + check authentication of the authdata
 Plaintext* decrypt_auth(uint8_t key[KEY_LENGTH], CryptoData* cryptoData, uint8_t* authdata, uint64_t authdata_l) {
     if (cryptoData->header.cipher_l < 8) { return nullptr; } // No room for nonce
-    printf("decrypt 1.1\n"); 
-    char* auth = byte_arr_to_str(authdata, authdata_l);
-    printf("Auth: %s\n", auth);
-    free(auth);
+    
     Plaintext* plaintext = (Plaintext*) malloc(sizeof(Plaintext));
     plaintext->plaintext_l = cryptoData->header.cipher_l - 8; // The output buffer must have at least as many bytes as the input buffer. - 8 because the nonce at the end will be removed
     plaintext->plaintext = (uint8_t*) malloc(plaintext->plaintext_l);
-    printf("decrypt 1.2\n"); 
+    
     // Setup ascon
     if (!setup_ascon(key, cryptoData->header.iv)) { return nullptr; }
-    printf("decrypt 1.3\n"); 
+     
     // Authdata
     uint8_t* authdata_c = (uint8_t*) malloc(authdata_l); // Need to make a copy since authdata would otherwise be altered
     memcpy(authdata_c, authdata, authdata_l);
     ascon.addAuthData(authdata_c, authdata_l);
     free(authdata_c);
-    printf("decrypt 1.4\n"); 
+     
     // Decryption
     uint8_t plaintext_bffr_l = plaintext->plaintext_l + 8;
     uint8_t* plaintext_bffr = (uint8_t*) malloc(plaintext_bffr_l);
-    printf("decrypt 1.4.1\n"); 
-    printf("l:%d\n", plaintext_bffr_l);
-    printf("p:%p\n", plaintext_bffr);
+    
     ascon.decrypt(plaintext_bffr, cryptoData->cipher, cryptoData->header.cipher_l);
-    printf("decrypt 1.4.2\n"); 
+    
     memcpy(plaintext->plaintext, plaintext_bffr, plaintext->plaintext_l);
-    printf("decrypt 1.5\n"); 
+    
     // Check authentication (aka tag)
     if (!ascon.checkTag(cryptoData->header.tag, TAG_LENGTH)) {
         // Authentication check failed -> discard
@@ -234,7 +227,7 @@ Plaintext* decrypt_auth(uint8_t key[KEY_LENGTH], CryptoData* cryptoData, uint8_t
         free(plaintext_bffr);
         return nullptr;
     }
-    printf("decrypt 1.6\n"); 
+     
     // Check nonce
     uint64_t nonce = extract_nonce(plaintext_bffr, plaintext_bffr_l);
     if (replay(nonce)) {
@@ -243,10 +236,9 @@ Plaintext* decrypt_auth(uint8_t key[KEY_LENGTH], CryptoData* cryptoData, uint8_t
         free(plaintext_bffr);
         return nullptr;
     }
-    update_nonce(nonce);
-    printf("decrypt 1.7\n"); 
+    update_nonce(nonce); 
 
     free(plaintext_bffr);
-    printf("decrypt 1.8\n"); 
+    
     return plaintext;
 }
