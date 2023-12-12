@@ -3,6 +3,8 @@ import json
 import numpy as np
 from datetime import datetime
 import paho.mqtt.client as mqtt             # pip install paho-mqtt
+from threading import Thread
+from time import sleep
 
 # Live charts
 import matplotlib.pyplot as plt             # pip install matplotlib OR pacman -S  pacman -S mingw-w64-ucrt-x86_64-python-matplotlib
@@ -18,6 +20,7 @@ import AsconPy
 PORT = 1883
 ADDRESS = "127.0.0.1"
 KEY = np.array([0x0e, 0xdc, 0x97, 0xa7, 0x95, 0xc1, 0x08, 0x65, 0xbf, 0x7d, 0xac, 0x1c, 0xc8, 0x53, 0x23, 0x48], np.uint8)
+NONCE_SYNC_INTERVAL = 8 # each ESP increments nonce once per second and has a safety margin of 10 => every 10 seconds => every 8 seconds to be safe
 
 ###################
 ### Live charts ###
@@ -111,6 +114,19 @@ def on_message(client, userdata, msg):
         case "humidity":
             handle_data_msg("humidity", msg.payload)
 
+stop = False
+def nonce_thread():
+    if (stop): return
+
+    print("Update nonce")
+
+    authdata_str = np.frombuffer(b'nonce', dtype=np.uint8)
+    cipher = ascon.encrypt(np.array([0], np.uint8), authdata_str)
+    client.publish("nonce", cipher.tobytes())
+    
+    sleep(NONCE_SYNC_INTERVAL)
+    nonce_thread()
+
 client = mqtt.Client()
 client.on_message = on_message
 client.connect(ADDRESS, PORT, 60)
@@ -120,7 +136,16 @@ client.loop_start()
 client.subscribe("temperature")
 client.subscribe("humidity")
 
+t = Thread(target=nonce_thread)
+t.start()
+
 input("Push any button to close")
+
+stop = True
+print("Stopping threads...")
+t.join()
+print("Threads stopped...")
+
 print("Stopping MQTT client...")
 client.loop_stop()
 print("MQTT client stopped successfully")

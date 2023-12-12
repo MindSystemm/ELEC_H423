@@ -6,7 +6,7 @@ Ascon128 ascon;
 uint64_t last_nonce;
 
 void init_nonce() {
-  last_nonce = 0; // TODO: Read from file
+  last_nonce = 0;
   FILE* in = fopen("ascon.bin","rb");
   if (in != nullptr) {
     // File exists
@@ -23,7 +23,6 @@ void init_nonce() {
 void update_nonce(uint64_t nonce) {
   if (nonce > last_nonce) {
     last_nonce = nonce;
-    // TODO: write nonce to file
     FILE* out = fopen("ascon.bin","wb");
     fwrite(&last_nonce, sizeof(uint64_t), 1, out);
     fclose(out);
@@ -148,10 +147,14 @@ uint64_t extract_nonce(uint8_t* arr, uint64_t l) {
     return nonce;
 }
 
-// TODO: Make random
 void fill_iv(uint8_t* iv, uint64_t l) {
     for (uint64_t i = 0; i < l; i++){
-        iv[i] = 0;
+        unsigned int rand_i;
+        errno_t err = rand_s(&rand_i);
+        if (err != 0) {
+            throw err;
+        }
+        iv[i] = (uint8_t) ((double)rand_i / ((double) UINT_MAX ) * 255) + 1;
     }
 }
 

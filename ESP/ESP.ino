@@ -13,8 +13,6 @@ DHT dht(26, DHT11);
 #define LED_PIN_WHITE 33
 #define BTN_TRIGGER_TIME 3000 // 3 seconds
 
-#define NONCE_SYNC_INT 9 // Nonce margin in Ascon.h is 10 => use 9 here to play safe
-
 WiFiClient espClient;
 PubSubClient client(espClient);
 uint8_t key[KEY_LENGTH] = CRYPTO_KEY;
@@ -132,12 +130,6 @@ void publish(char* topic, float val) {
   publish_encrypted(topic, (uint8_t*) stringified_data_arr, data_length);
 }
 
-void publish_nonce() {
-  // Just publishes and empty encrypted message to sync nonce
-  uint8_t data[1] = {0};
-  publish_encrypted("nonce", data, 1);
-}
-
 int btn_begin = 0;
 int btn_press_time = 0;
 int btn_pressed = false;
@@ -189,7 +181,6 @@ void setup() {
 
 int last_update = millis();
 bool triggered_paused_update = false; // Used to detect button release between pause state updates
-size_t loops_until_nonce_update = NONCE_SYNC_INT;
 void loop() {
   bool btn_active = update_btn();
 
@@ -245,14 +236,6 @@ void loop() {
 
       publish("temperature", temp);
       publish("humidity", humidity);
-
-      loops_until_nonce_update--;
-
-      if (loops_until_nonce_update == 0) {
-        publish_nonce();
-        loops_until_nonce_update = NONCE_SYNC_INT;
-      }
-
 
       digitalWrite(LED_PIN_WHITE, HIGH);
     }

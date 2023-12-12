@@ -1,7 +1,10 @@
 #ifndef ASCON_H
 #define ASCON_H
 
+#define _CRT_RAND_S
+
 #include <cstdlib>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
