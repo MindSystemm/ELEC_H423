@@ -13,7 +13,7 @@ DHT dht(26, DHT11);
 #define LED_PIN_WHITE 33
 #define BTN_TRIGGER_TIME 3000 // 3 seconds
 
-#define NONCE_MARGIN 9
+#define NONCE_SYNC_INT 9 // Nonce margin in Ascon.h is 10 => use 9 here to play safe
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -189,7 +189,7 @@ void setup() {
 
 int last_update = millis();
 bool triggered_paused_update = false; // Used to detect button release between pause state updates
-size_t loops_until_nonce_update = NONCE_MARGIN;
+size_t loops_until_nonce_update = NONCE_SYNC_INT;
 void loop() {
   bool btn_active = update_btn();
 
@@ -250,7 +250,7 @@ void loop() {
 
       if (loops_until_nonce_update == 0) {
         publish_nonce();
-        loops_until_nonce_update = NONCE_MARGIN;
+        loops_until_nonce_update = NONCE_SYNC_INT;
       }
 
 
